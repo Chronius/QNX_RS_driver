@@ -51,12 +51,13 @@
 
 
 #include <InterruptHandler.h>
+#include <signal.h>
 
 extern volatile p_uart_reg p_uart[UART_CHANNEL_COUNT];
 extern channel_uart channel[UART_CHANNEL_COUNT];
 
 extern pthread_spinlock_t  fifo_spinlock[UART_CHANNEL_COUNT];
-
+extern void handler();
 
 void options (int argc, char **argv);
 
@@ -77,8 +78,6 @@ int io_read (resmgr_context_t *ctp, io_read_t  *msg, RESMGR_OCB_T *ocb);
 int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb);
 
 int io_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb);
-int handle_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb);
-int io_notify(resmgr_context_t *ctp, io_notify_t *msg, RESMGR_OCB_T *ocb);
 
 /*
  * Our connect and I/O functions - we supply two tables
@@ -174,11 +173,11 @@ int main (int argc, char **argv)
 		strcat(name, p);
 		pathID = resmgr_attach (dpp, &rattr, name,
 					_FTYPE_ANY, 0, &connect_funcs, &io_funcs, &sample_attrs[i]);
-		printf("%s\n", name);
+		printf("%s  %d\n", name, pathID);
 	}
 
 	pthread_create (NULL, NULL, interrupt_thread, NULL);
-
+	pthread_create (NULL, NULL, handler, NULL);
 	/* Now we allocate some memory for the dispatch context
 	 * structure, which will later be used when we receive
 	 * messages. */
@@ -236,16 +235,19 @@ io_open (resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void *e
 
 int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 {
-	size_t nleft;
 	size_t nbytes = 0;
-	int nparts;
 	int status;
-
+	int nonblock;
 	/* Here we verify if the client has the access
 	 * rights needed to read from our device */
-	if ((status = iofunc_read_verify(ctp, msg, ocb, NULL)) != EOK)
+	if ((status = iofunc_read_verify(ctp, msg, ocb, &nonblock)) != EOK)
 	{
 		return (status);
+	}
+	/* Client does`n want blocking */
+	if (nonblock)
+	{
+		return (EAGAIN);
 	}
 	/* We check if our read callback was called because of
 	 * a pread() or a normal read() call. If pread(), we return
@@ -254,29 +256,30 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 	{
 		return (ENOSYS);
 	}
-	/*
-	 *  On all reads (first and subsequent), calculate
-	 *  how many bytes we can return to the client,
-	 *  based upon the number of bytes available (nleft)
-	 *  and the client's buffer size
-	 *
-	 *  ocb->attr указывает на sample_attrs[i].nbytes
+	/*	ocb->attr указывает на sample_attrs[i].nbytes
 	 *  в контексте данной сессии
 	 */
-	nleft = ocb->attr->nbytes - ocb->offset;
+
+
+/*
+	sigset_t *set;
+	siginfo_t info;
+	SignalWaitinfo(set, &info);
+*/
 
 	unsigned char *buffer = NULL;
 	buffer = malloc(ocb->attr->nbytes + 1);
 	if (buffer == NULL)
 		return (ENOMEM);
-
 	ocb->attr->nbytes = fifo_count(&channel[ctp->id].rx_fifo);
 	nbytes = min(_IO_READ_GET_NBYTES(msg), ocb->attr->nbytes);
 
+//	SignalAction(ctp->rcvid, ,SIGINT, NULL, NULL);
 	/*
-	 *	Test function Прерывание cat по crtl+C ставиться в очередь
+	 *	Test function Прерывание cat по Ctrl-C ставиться в очередь
 	 *	и срабатывает только по прибытию нового символа,
 	 *	MsgReply - разблокирует клиента только если буфер не пустой
+	 *	Прерывание по Ctrl-D
 	 */
 	unsigned char *buf = NULL;
 	while (true)
@@ -324,7 +327,7 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 	else
 	{
 //		nparts = 0;
-		char str = '\0'
+		char str = '\0';
 		MsgReply(ctp->rcvid, 1, &str, 1);
 	}
 	/* mark the access time as invalid (we just accessed it) */
@@ -378,7 +381,6 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb)
 		buf = (char *)malloc(127 + 1);
 		if (buf == NULL)
 			return (ENOMEM);
-		int count = fifo_count(&channel[ctp->id].tx_fifo);
 
 		buf[msg->i.nbytes] = '\0';
 		int DataSize = 128;
@@ -472,8 +474,7 @@ int io_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb)
 		break;
 
 	case DCMD_CHR_TCGETATTR:
-		cfsetispeed(&options_o, channel[ctp->id].config.baud);
-		cfsetospeed(&options_o, channel[ctp->id].config.baud);
+		cfsetospeed(options_o, channel[ctp->id].config.baud);
 		options_o->c_cflag |= channel[ctp->id].config.data_bits;
 		memset(&msg->o, 0, sizeof(msg->o));
 		nbytes = sizeof(struct termios);
@@ -495,6 +496,42 @@ int io_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb)
 	return(_RESMGR_PTR(ctp, &msg->o, sizeof(msg->o) + nbytes));
 }
 
+void handler()
+  {
+
+	/*
+	 *	инициализация структуры для
+	 *	потока обработки сигналов
+	 */
+	memset(&event, 0, sizeof(event));
+	event.sigev_notify = SIGEV_SIGNAL;
+	SIGEV_SIGNAL_INIT(&event, SIGINT);
+	signal( SIGINT, handler );
+
+
+//	struct sigaction act;
+//	sigset_t set;
+//
+//	sigemptyset( &set );
+//	sigaddset( &set, SIGINT );
+//	act.sa_flags = 0;
+//	act.sa_mask = set;
+//	act.sa_handler = &handler;
+//	sigaction( SIGINT, &act, NULL );
+
+	int sig, res;
+	sigset_t *set;
+	siginfo_t info;
+	sigemptyset( &set );
+	sigaddset( &set, SIGINT );
+	res = sigwaitinfo(&set, &info);
+	printf("Received signal %d", info.si_signo);
+//	while (true)
+//	{
+//		res = sigwait(&set, &sig);
+//	}
+	res = 1;
+  }
 
 /*
  *  options
@@ -508,11 +545,8 @@ int io_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb)
 options (int argc, char **argv)
 {
 	int     opt;
-	int     i;
 
 	optv = 0;
-
-	i = 0;
 	while (optind < argc) {
 		while ((opt = getopt (argc, argv, "v")) != -1) {
 			switch (opt) {
