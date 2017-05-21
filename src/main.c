@@ -1,25 +1,6 @@
 /* R E S O U R C E   M A N A G E R S  - THE "NULL DEVICE" */
 
-/* Project Name: "example_resmgr_devnull" */
-
-/* What is a Resource Manager under QNX Neutrino?
- * A resource manager is a superset of a device driver. The QNX
- * resource manager framework is used to create the POSIX
- * interface (open, read, write, etc.) for any resource you
- * can think of. Imagine you are coding a device driver for
- * a device that reads credit cards. Your application would then
- * be able to just use open() to access the card, read() to retrieve
- * data from the card, and write() to store data on the card.
- * If later your hardware changes, and you don't need to read
- * credit cards any more but are reading serial data from some
- * field bus instead, you replace/update the resource manager
- * while your application still just uses open(), read() and write()!
- */
-
-/* More information:
- * Please read the Writing a Resource Manager guide or the
- * Resource Managers chapter in Getting Started with QNX Neutrino.
- */
+/* Project Name: "PCI RS driver" */
 
 #include <proto.h>
 #include <signal.h>
