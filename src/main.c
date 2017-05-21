@@ -1,6 +1,11 @@
 /* R E S O U R C E   M A N A G E R S  - THE "NULL DEVICE" */
 
 /* Project Name: "PCI RS driver" */
+/*
+ * main.c
+ *
+ *      Author: abuzarov_bv
+ */
 
 #include <proto.h>
 #include <signal.h>
