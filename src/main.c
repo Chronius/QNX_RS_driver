@@ -1,4 +1,4 @@
-/* R E S O U R C E   M A N A G E R S  - THE "NULL DEVICE" */
+/* R E S O U R C E   M A N A G E R S  - THE "PCI RS DRIVER */
 
 /* Project Name: "PCI RS driver" */
 /*
