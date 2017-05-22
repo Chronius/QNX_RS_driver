@@ -16,13 +16,16 @@
 #include <string.h>
 #include <unistd.h>
 #include <atomic.h>
+#include <fcntl.h>
 
 #define THREAD_POOL_PARAM_T dispatch_context_t
 
+#include <pthread.h>
 #include <sys/iofunc.h>
 #include <sys/dispatch.h>
 #include <sys/neutrino.h>
 #include <sys/resmgr.h>
+#include <sys/procfs.h>
 
 #include <sys/mman.h>
 #include <sys/dcmd_chr.h>
@@ -39,6 +42,7 @@
 
 #include <fifo.h>
 #include <specific_def.h>
+#include <request_queue.h>
 
 #define CPU_CLOCK_MHZ	 		125000000
 #define UART_CHANNEL_COUNT		20
@@ -118,19 +122,22 @@ channel_uart channel[UART_CHANNEL_COUNT];
 pthread_spinlock_t  fifo_spinlock[UART_CHANNEL_COUNT];
 iofunc_attr_t sample_attrs[UART_CHANNEL_COUNT];
 
-int io_open (resmgr_context_t *ctp, io_open_t  *msg, RESMGR_HANDLE_T *handle, void *extra);
-int io_read (resmgr_context_t *ctp, io_read_t  *msg, RESMGR_OCB_T *ocb);
-int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb);
-int io_devctl(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb);
-void options (int argc, char **argv);
+int io_open 	(resmgr_context_t *ctp, io_open_t  *msg, RESMGR_HANDLE_T *handle, void *extra);
+int io_read 	(resmgr_context_t *ctp, io_read_t  *msg, RESMGR_OCB_T *ocb);
+int io_write	(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb);
+int io_devctl	(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb);
+int io_unblock	(resmgr_context_t *ctp, io_pulse_t *msg, RESMGR_OCB_T *ocb);
 
-void handler();
+void options 	(int argc, char **argv);
 
-void port_init(void * base_addr);
-int pci_init();
-void * interrupt_thread(void * data);
-void from_config(int i);
+int pci_init			(void);
+void port_init			(void * base_addr);
+void * interrupt_thread	(void * data);
+void from_config		(int i);
 
 const struct sigevent *isr_handler (void * area, int id);
+
+void handler	(void * args);
+void sighandler	(int signum, siginfo_t * siginfo, void * context);
 
 #endif /* INCLUDE_PROTO_H_ */

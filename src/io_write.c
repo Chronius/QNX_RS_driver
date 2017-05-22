@@ -4,12 +4,7 @@
  *  Created on: 18 мая 2017 г.
  *      Author: abuzarov_bv
  */
-
 #include <proto.h>
-
-extern volatile p_uart_reg p_uart[UART_CHANNEL_COUNT];
-extern channel_uart channel[UART_CHANNEL_COUNT];
-extern pthread_spinlock_t  fifo_spinlock[UART_CHANNEL_COUNT];
 
 
 /*

@@ -38,61 +38,59 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 	{
 		return (ENOSYS);
 	}
+
+	if (msg->i.nbytes <= 0) {
+        _IO_SET_READ_NBYTES(ctp, 0);
+        return _RESMGR_NPARTS(0);
+    }
 	/*	ocb->attr указывает на sample_attrs[i].nbytes
 	 *  в контексте данной сессии
 	 */
 
-
-/*
-	sigset_t *set;
-	siginfo_t info;
-	SignalWaitinfo(set, &info);
-*/
-
 	unsigned char *buffer = NULL;
-	buffer = malloc(ocb->attr->nbytes + 1);
-	if (buffer == NULL)
+	if ((buffer = malloc(ocb->attr->nbytes + 1)) == NULL)
 		return (ENOMEM);
+	memset(buffer, 0, sizeof(ocb->attr->nbytes + 1));
 	ocb->attr->nbytes = fifo_count(&channel[ctp->id].rx_fifo);
 	nbytes = min(_IO_READ_GET_NBYTES(msg), ocb->attr->nbytes);
 
-//	kill(ctp->info.pid, SIGTERM);
-//	SignalAction(ctp->info.pid, ,SIGINT, NULL, NULL);
 	/*
 	 *	Test function Прерывание cat по Ctrl-C ставиться в очередь
 	 *	и срабатывает только по прибытию нового символа,
 	 *	MsgReply - разблокирует клиента только если буфер не пустой
 	 *	Прерывание по Ctrl-D
 	 */
+
 	unsigned char *buf = NULL;
 
 #ifndef Debug
-	while (true)
+
+	nbytes = fifo_count(&channel[ctp->id].rx_fifo);
+	if (nbytes > 0)
 	{
-		nbytes = fifo_count(&channel[ctp->id].rx_fifo);
-		if (nbytes > 0)
-		{
-			buf = malloc(nbytes + 1);
-			if (buf == NULL)
-				return (ENOMEM);
+		buf = malloc(nbytes + 1);
+		if (buf == NULL)
+			return (ENOMEM);
 
-			pthread_spin_lock(&fifo_spinlock[ctp->id]);
-			fifo_get(&channel[ctp->id].rx_fifo, buf, 0, nbytes);
-			MsgReply(ctp->rcvid, nbytes, buf, nbytes);
-			pthread_spin_unlock(&fifo_spinlock[ctp->id]);
+		pthread_spin_lock(&fifo_spinlock[ctp->id]);
+		fifo_get(&channel[ctp->id].rx_fifo, buf, 0, nbytes);
+		MsgReply(ctp->rcvid, nbytes, buf, nbytes);
+		pthread_spin_unlock(&fifo_spinlock[ctp->id]);
 
-			ocb->attr->flags |=
-			IOFUNC_ATTR_ATIME | IOFUNC_ATTR_DIRTY_TIME;
+		ocb->attr->flags |=
+		IOFUNC_ATTR_ATIME | IOFUNC_ATTR_DIRTY_TIME;
 
-			free(buf);
-			return _RESMGR_NOREPLY ;
-		}
+		free(buf);
+		free(buffer);
+		return _RESMGR_NOREPLY;
 	}
-#endif
+#else
 	/*
 	 *	Cat реагирует на сигнал Ctrl+C, но при
 	 *	выводе в файл терминальные нули '\0'
 	 *	также будут записаны
+	 *
+	 *	!!! забивает память
 	 */
 	if (nbytes > 0)
 	{
@@ -101,7 +99,9 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 		pthread_spin_unlock(&fifo_spinlock[ctp->id]);
 
 		/* set up the return data IOV */
+		_IO_SET_READ_NBYTES (ctp, nbytes);
 		MsgReply(ctp->rcvid, nbytes, buffer, nbytes);
+		memset(buffer, 0, sizeof(ocb->attr->nbytes + 1));
 		ocb->attr->flags |=
 		IOFUNC_ATTR_ATIME | IOFUNC_ATTR_DIRTY_TIME;
 		/*
@@ -113,28 +113,21 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
 	else
 	{
 //		nparts = 0;
-//		MsgReply(ctp->rcvid, 1, &str, 1);
-		_IO_SET_READ_NBYTES (ctp, 0);
-		SETIOV(&ctp->iov[0], NULL, 0);
-//		MsgReplyv(ctp->rcvid, 3, &ctp->iov[0], 1);
-//		MsgReply(ctp->rcvid, ETIMEDOUT, NULL, 0);
-//		MsgReply(ctp->rcvid, 3, NULL, 0);
-		MsgError(ctp->rcvid, EWOULDBLOCK);
+//		char c = '\0';
+//		MsgReply(ctp->rcvid, 1, &c, 1);
+//		_IO_SET_READ_NBYTES (ctp, 0);
+		 _IO_SET_READ_NBYTES (ctp, 0);
+		 MsgReply(ctp->rcvid, 1, buffer, 0);
 	}
-	/* mark the access time as invalid (we just accessed it) */
 
-	/* The next line (commented) is used to tell the system how
-	 * large your buffer is in which you want to return your
-	 * data for the read() call.
-	 */
+#endif
+	/* mark the access time as invalid (we just accessed it) */
 	if (nbytes > 0)
 	{
 		ocb->attr->flags |= IOFUNC_ATTR_ATIME;
 	}
-	/* We return 0 parts, because we are the null device.
-	 * Normally, if you return actual data, you would return at
-	 * least 1 part. A pointer to and a buffer length for 1 part
-	 * are located in the ctp structure.  */
-	free(buffer);
+	free((void*)buffer);
+	free((void*)buf);
+	MsgReply(ctp->rcvid, EOK, NULL, 0);
 	return _RESMGR_NOREPLY;
 }

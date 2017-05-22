@@ -31,10 +31,17 @@ int     optv;                               // -v for verbose operation
 
 static volatile unsigned done = 0;
 
+static int pathID[UART_CHANNEL_COUNT];
+
 static void rs_exit(int signo)
 {
 	atomic_set(&done, 1);
 	dispatch_unblock(ctp);
+
+	for (int i = 0; i < UART_CHANNEL_COUNT; i++)
+	{
+		resmgr_detach(dpp, pathID[i], _RESMGR_DETACH_ALL);
+	}
 }
 
 int main (int argc, char **argv)
@@ -48,7 +55,6 @@ int main (int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	struct sigaction    sa;
 	printf ("%s:  starting...\n", progname);
 
 	/* Check for command line options (-v) */
@@ -89,6 +95,8 @@ int main (int argc, char **argv)
 	io_funcs.write = io_write;
 
 	io_funcs.devctl=io_devctl;
+	io_funcs.unblock=io_unblock;
+
 
 	/* Next we call resmgr_attach() to register our device name
 	 * with the process manager, and also to let it know about
@@ -96,7 +104,6 @@ int main (int argc, char **argv)
 
 	char *p;
 	char p_buf[2];
-	int pathID;
 
 	for (int i = 0; i < UART_CHANNEL_COUNT; i++)
 	{
@@ -104,9 +111,9 @@ int main (int argc, char **argv)
 		iofunc_attr_init (&sample_attrs[i], S_IFNAM | 0666, NULL, NULL);
 		p = itoa(i, p_buf, 10);
 		strcat(name, p);
-		pathID = resmgr_attach (dpp, &rattr, name,
+		pathID[i] = resmgr_attach (dpp, &rattr, name,
 					_FTYPE_ANY, 0, &connect_funcs, &io_funcs, &sample_attrs[i]);
-		printf("%s  %d\n", name, pathID);
+//		printf("%s  %d\n", name, pathID[i]);
 	}
 
 	pthread_create (NULL, NULL, interrupt_thread, NULL);
@@ -118,21 +125,22 @@ int main (int argc, char **argv)
 
 
     /* register exit handler */
-    sigemptyset(&sa.sa_mask);
-    sigaddset(&sa.sa_mask, SIGTERM);
-    sa.sa_handler = rs_exit;
-    sa.sa_flags = 0;
-    sigaction(SIGTERM, &sa, NULL);
+//	struct sigaction    sa;
+//   sigemptyset(&sa.sa_mask);
+//   sigaddset(&sa.sa_mask, SIGTERM);
+//   sa.sa_handler = rs_exit;
+//   sa.sa_flags = 0;
+//   sigaction(SIGTERM, &sa, NULL);
 
-    /* background the process */
-    procmgr_daemon(0, PROCMGR_DAEMON_NOCLOSE|PROCMGR_DAEMON_NODEVNULL);
+   /* background the process */
+//   procmgr_daemon(0, PROCMGR_DAEMON_NOCLOSE|PROCMGR_DAEMON_NODEVNULL);
 
 	/* Done! We can now go into our "receive loop" and wait
 	 * for messages. The dispatch_block() function is calling
 	 * MsgReceive() under the covers, and receives for us.
 	 * The dispatch_handler() function analyzes the message
 	 * for us and calls the appropriate callback function. */
-	while (1) {
+	while (!done) {
 		if ((ctp = dispatch_block (ctp)) == NULL) {
 			fprintf (stderr, "%s:  dispatch_block failed: %s\n",
 					progname, strerror (errno));
@@ -145,6 +153,7 @@ int main (int argc, char **argv)
 		 * to create a multi-threaded resource manager. */
 		dispatch_handler (ctp);
 	}
+	return 0;
 }
 
 /*
@@ -165,39 +174,22 @@ io_open (resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void *e
 		printf ("%s:  in io_open\n", progname);
 	}
 
+//	pthread_t foot;
+//	foo.chid = ctp->info.chid;
+//	foo.read_flag = 0;
+//	pthread_create(&foot, NULL, (void*)handler, (void *)&foo);
+//
+//	struct sched_param param;
+//	int policy;
+//	pthread_t thread = pthread_self();
+//	int sts = pthread_getschedparam(thread, &policy, &param);
+//	sts = pthread_getschedparam(foot, &policy, &param);
+//	param.sched_priority = 7;
+//	sts = pthread_setschedparam(foot, &policy, &param);
+
 	return (iofunc_open_default (ctp, msg, handle, extra));
 }
 
-void handler()
-{	/*
-	 *	инициализация структуры для
-	 *	потока обработки сигналов
-	 */
-	memset(&event, 0, sizeof(event));
-	event.sigev_notify = SIGEV_SIGNAL;
-	SIGEV_SIGNAL_INIT(&event, SIGINT);
-	signal( SIGINT, handler);
-//	struct sigaction act;
-//
-//	act.sa_flags = 0;
-//	act.sa_mask = set;
-//	act.sa_handler = &handler;
-//	sigaction( SIGINT, &act, NULL );
-
-	int res;
-	sigset_t set;
-	siginfo_t info;
-	sigemptyset(&set);
-	sigaddset(&set, SIGINT);
-	res = sigwaitinfo(&set, &info);
-	printf("Received signal %d", info.si_signo);
-//	while (true)
-//	{
-//		res = sigwait(&set, &sig);
-//	}
-
-	TM_PRINTF("res", res);
-}
 
 /*
  *  options

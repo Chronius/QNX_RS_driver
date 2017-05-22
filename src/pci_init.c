@@ -63,8 +63,9 @@ int pci_init()
 					ptr += 0x1000000;
 					for (int i = 0; i < UART_CHANNEL_COUNT; i++)
 					{
-						//						выведены	 p_uart[12] - p_uart[18]
-						//									 p_uart[13] - p_uart[17]
+					/* выведены	 p_uart[12] - p_uart[18]
+					 * p_uart[13] - p_uart[17]
+					 */
 						p_uart[i] = ptr;
 						channel[i].ptr_u = ptr;
 						ptr += 0x200;
