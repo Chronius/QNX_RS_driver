@@ -18,14 +18,14 @@ int init_queue_request(callback * p_callback)
 	return EOK;
 }
 
-int add_queue_request(const callback_attr *arg, callback *p_callback)
+int add_queue_request(const callback_attr_t *arg, callback *p_callback)
 {
-	callback_attr * ptr = (callback*) malloc(sizeof(callback_attr));
+	callback_attr_t * ptr = (callback_attr_t*) malloc(sizeof(callback_attr_t));
 	if (ptr == NULL)
 	{
 		return ENOMEM;
 	}
-	memcpy(ptr, arg, sizeof(callback_attr));
+	memcpy(ptr, arg, sizeof(callback_attr_t));
 
 	if (p_callback->head == NULL)
 	{
@@ -42,9 +42,9 @@ int add_queue_request(const callback_attr *arg, callback *p_callback)
 	return EOK;
 }
 
-callback_attr* pop_queue_request(callback *p_callback)
+callback_attr_t* pop_queue_request(callback *p_callback)
 {
-	callback_attr *tmp;
+	callback_attr_t *tmp;
 	if (p_callback->head)
 	{
 		tmp = p_callback->head;
@@ -67,7 +67,7 @@ int check_queue_request(callback *p_callback)
 
 int check_id_queue_request (callback *p_calback, int id)
 {
-	callback_attr *tmp;
+	callback_attr_t *tmp;
 	tmp = p_callback->head;
 	if (!tmp)
 		return -1;
@@ -83,7 +83,7 @@ int check_id_queue_request (callback *p_calback, int id)
 
 void wait_queue_request(callback *p_callback)
 {
-	callback_attr *tmp;
+	callback_attr_t *tmp;
 	size_t nbytes = 0;
 	int res;
 
