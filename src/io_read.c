@@ -43,10 +43,19 @@ int io_read(resmgr_context_t *ctp, io_read_t *msg, RESMGR_OCB_T *ocb)
         _IO_SET_READ_NBYTES(ctp, 0);
         return _RESMGR_NPARTS(0);
     }
+
+	callback_attr_t attr;
+	attr.client_id = ctp->rcvid;
+	attr.nbytes = _IO_READ_GET_NBYTES(msg);
+	attr.dev_id = ctp->id;
+
+	pthread_spin_lock(&fifo_spinlock[ctp->id]);
+    enqueue_request(&attr, &p_callback);
+    pthread_spin_unlock(&fifo_spinlock[ctp->id]);
+    return _RESMGR_NOREPLY;
 	/*	ocb->attr указывает на sample_attrs[i].nbytes
 	 *  в контексте данной сессии
 	 */
-
 	unsigned char *buffer = NULL;
 	if ((buffer = malloc(ocb->attr->nbytes + 1)) == NULL)
 		return (ENOMEM);
