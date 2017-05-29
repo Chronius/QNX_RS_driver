@@ -8,6 +8,8 @@
 #ifndef INCLUDE_PROTO_H_
 #define INCLUDE_PROTO_H_
 
+//#define POLLING
+
 #pragma once
 
 #include <errno.h>
@@ -101,6 +103,7 @@ typedef struct uart_setting
 
 static volatile uart_setting uart_set;
 
+#include <request_struct.h>
 
 typedef struct channel_uart_t
 {
@@ -115,7 +118,9 @@ typedef struct channel_uart_t
         int stop_bit;    // 1, 2
         int par;
     } config;
+    callback p_callback;
 } channel_uart;
+
 
 channel_uart channel[UART_CHANNEL_COUNT];
 
@@ -123,6 +128,7 @@ pthread_spinlock_t  fifo_spinlock[UART_CHANNEL_COUNT];
 iofunc_attr_t sample_attrs[UART_CHANNEL_COUNT];
 
 int io_open   (resmgr_context_t *ctp, io_open_t  *msg, RESMGR_HANDLE_T *handle, void *extra);
+int io_close (resmgr_context_t *ctp, void *reserved, RESMGR_OCB_T *ocb);
 int io_read   (resmgr_context_t *ctp, io_read_t  *msg, RESMGR_OCB_T *ocb);
 int io_write  (resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb);
 int io_devctl (resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB_T *ocb);
@@ -140,6 +146,7 @@ const struct sigevent *isr_handler (void * area, int id);
 void handler       (void * args);
 void sighandler    (int signum, siginfo_t * siginfo, void * context);
 
-struct callback_t p_callback;
+void check_rx_and_reply(channel_uart *channel, unsigned char *buf);
+void check_tx_and_reply(channel_uart *channel, unsigned char *buf);
 
 #endif /* INCLUDE_PROTO_H_ */

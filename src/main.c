@@ -91,6 +91,7 @@ int main (int argc, char **argv)
     /* Now we override the default function pointers with
      * some of our own coded functions: */
     connect_funcs.open = io_open;
+    io_funcs.close_ocb = io_close;
     io_funcs.read = io_read;
     io_funcs.write = io_write;
 
@@ -118,9 +119,10 @@ int main (int argc, char **argv)
 
     pthread_create (NULL, NULL, interrupt_thread, NULL);
 
-//    init_queue_request(&p_callback);
-    pthread_create (NULL, NULL, wait_queue_request, (void*)&p_callback);
-//    pthread_create (NULL, NULL, handler, NULL);
+//    pthread_create (NULL, NULL, wait_queue_request, (void*)&p_callback);
+#ifdef POLLING
+    pthread_create (NULL, NULL, wait_foo, NULL);
+#endif
     /* Now we allocate some memory for the dispatch context
      * structure, which will later be used when we receive
      * messages. */
@@ -163,34 +165,48 @@ int main (int argc, char **argv)
  *  io_open
  *
  * We are called here when the client does an open().
- * In this simple example, we just call the default routine
- * (which would be called anyway if we did not supply our own
- * callback), which creates an OCB (Open Context Block) for us.
- * In more complex resource managers, you will want to check if
- * the hardware is available, for example.
+ * Set Rx and Tx interrupt, and mark in device bitmask as opened
  */
 
-    int
-io_open (resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void *extra)
+int io_open(resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle,
+		void *extra)
 {
-    if (optv) {
-        printf ("%s:  in io_open\n", progname);
-    }
+	if (optv)
+	{
+		printf("%s:  in io_open\n", progname);
+	}
+	if (CheckBit(dev_l.dev_open, ctp->id))
+	{
+		return EBUSY;
+	}
+	else
+	{
+		fifo_init(&channel[ctp->id].rx_fifo);
+		fifo_init(&channel[ctp->id].tx_fifo);
+		from_config(ctp->id);
+		dev_l.dev_open |= (1 << ctp->id);
+		p_uart[ctp->id]->ier_dlh = p_uart[ctp->id]->ier_dlh | IER_RxD_Set;
+		return (iofunc_open_default(ctp, msg, handle, extra));
+	}
+}
 
-//    pthread_t foot;
-//    foo.chid = ctp->info.chid;
-//    foo.read_flag = 0;
-//    pthread_create(&foot, NULL, (void*)handler, (void *)&foo);
-//
-//    struct sched_param param;
-//    int policy;
-//    pthread_t thread = pthread_self();
-//    int sts = pthread_getschedparam(thread, &policy, &param);
-//    sts = pthread_getschedparam(foot, &policy, &param);
-//    param.sched_priority = 7;
-//    sts = pthread_setschedparam(foot, &policy, &param);
+/*
+ *  io_close
+ *
+ * We are called here when the client does an close().
+ * Clear Rx and Tx interrupt, and mark in bitmask dev/rts/RS* as closed
+ */
 
-    return (iofunc_open_default (ctp, msg, handle, extra));
+int io_close(resmgr_context_t *ctp, void *reserved, RESMGR_OCB_T *ocb)
+{
+	if (optv)
+	{
+		printf("%s:  in io_open\n", progname);
+	}
+	dev_l.dev_open &= ~(1 << ctp->id);
+	p_uart[ctp->id]->ier_dlh = 0;
+
+	return (1);
 }
 
 
@@ -198,7 +214,6 @@ io_open (resmgr_context_t *ctp, io_open_t *msg, RESMGR_HANDLE_T *handle, void *e
  *  options
  *
  *  This routine handles the command-line options.
- *  For our simple /dev/Null, we support:
  *      -v      verbose operation
  */
 

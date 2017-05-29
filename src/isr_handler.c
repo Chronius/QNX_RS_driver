@@ -18,12 +18,6 @@ void * interrupt_thread(void * data)
 	memset(&event, 0, sizeof(event));
 	event.sigev_notify = SIGEV_INTR;
 
-	//  x8 x6 x7 x5 сюда будут передаваться параметры какие порты необходимо открыть
-	dev_l.dev_open = (1 << 17) | (1 << 18) | (1 << 12) | (1 << 13);
-	//    for (int i = 0; i < UART_CHANNEL_COUNT; i++) {
-	//    	((1 << i) & dev_list) ? printf("%d:1\n",i) :printf("%d:0\n",i);
-	//    }
-
 	if ((err = InterruptUnmask(17, id)) == -1)
 	{
 		perror("Can`t interrupt unmask\n");
@@ -33,15 +27,18 @@ void * interrupt_thread(void * data)
 	for (int i = 0; i < UART_CHANNEL_COUNT; i++)
 	{
 		memset(&fifo_spinlock[i], 0, sizeof(fifo_spinlock[i]));
+		init_queue_request(&channel[i].p_callback);
 	}
 
 	uint8_t byte;
+	unsigned char *buf = malloc(FIFO_LENGTH);
 
 //	*(uart_set.IrqEnable) = (1 << 2) | (1 << 1) | (1 << 7) | (1 << 6);
 	*(uart_set.IrqEnable) |= (0xFFFFFFFF);
 	while (1)
 	{
 		InterruptWait(0, NULL);
+		*(uart_set.IrqEnable) &= ~(0xFFFFFFFF);
 		for (int i = 0; i < UART_CHANNEL_COUNT; i++)
 		{
 			pthread_spin_lock(&fifo_spinlock[i]);
@@ -52,20 +49,23 @@ void * interrupt_thread(void * data)
 				while (LSR_DR_Get(p_uart[i]->lsr))
 				{
 					byte = (uint8_t) p_uart[i]->rbr_thr_dll;
-					if (byte != '\0') fifo_put(&channel[i].rx_fifo, &byte, 0, 1);
-//					printf("ch%d:0x%x - %c \n", i, byte, byte);
-				}
+//					if (byte != '\0')
+					fifo_put(&channel[i].rx_fifo, &byte, 0, 1);
+			 	}
+				#ifndef POLLING
+				check_rx_and_reply(&channel[i], buf);
+				#endif
 				//if Tx
 				uint32_t lsr = p_uart[i]->lsr;
 				if (IIR_Get(p_uart[i]->iir_fcr) == TXFIFO_EMPTY)
 				{
 					if (LSR_THRE_Get(lsr) || LSR_TEMPT_Get(lsr))
 					{
+//						memset(buf, 0, FIFO_LENGTH);
 						p_uart[i]->ier_dlh = IER_RxD_Set; // disable interrupt from txfifo until we write down there
+						check_tx_and_reply(&channel[i], buf);
 					}
 				}
-				sample_attrs[i].nbytes = fifo_count(&channel[i].rx_fifo);
-//				*(uart_set.IrqEnable) |= (1 << (19 - i));
 			}
 			pthread_spin_unlock(&fifo_spinlock[i]);
 		}
@@ -103,7 +103,8 @@ void port_init(void * base_addr)
 		p_uart[i]->mcr = 0;
 		p_uart[i]->iir_fcr = FCR_FIFO_ENABLE_Set | FCR_RESETRF_Set
 				| FCR_RESETTF_Set;
-		p_uart[i]->ier_dlh = IER_RxD_Set;
+//		p_uart[i]->ier_dlh = IER_RxD_Set;
+		p_uart[i]->ier_dlh = 0;
 		channel[i].config.mode = true;
 		channel[i].config.baud = B115200;
 		channel[i].config.data_bits = MODE_08_TO_CS(LCR_SDB_MODE_08);

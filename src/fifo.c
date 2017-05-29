@@ -6,11 +6,11 @@
  */
 #include "fifo.h"
 
-s8 fifo_put(fifo_t *fifo, void *data, u8 offset, u8 count)
+s8 fifo_put(fifo_t *fifo, void *data, int offset, int count)
 {
   if ((FIFO_LENGTH - fifo->count) < count)                      //Проверяем, достаточно ли места
     return -1;                                                  //Нет? Возвращаем "-1" и уходим
-  for (u8 i = offset; i < (offset + count); i++)                //Цикл заполнения
+  for (int i = offset; i < (offset + count); i++)                //Цикл заполнения
   {
     fifo->data[fifo->tail++] =((u8*) data)[i];                  //Кладем сами данные и сразу tail++
     fifo->count++;                                              //Увеличиваем переменную-счетчик
@@ -22,11 +22,11 @@ s8 fifo_put(fifo_t *fifo, void *data, u8 offset, u8 count)
   return 0;                                                     //Возвращаем "ОК"
 }
 
-s8 fifo_get(fifo_t *fifo, void *data, u8 offset, u8 count)
+s8 fifo_get(fifo_t *fifo, void *data, int offset, int count)
 {
   if (fifo->count < count)                                      //Проверяем, можем ли мы выдать столько,
     return -1;                                                  //сколько у нас просят
-  for (u8 i = offset; i < (offset + count); i++)                //Цикл записи
+  for (int i = offset; i < (offset + count); i++)                //Цикл записи
   {
     ((u8*)data)[i] = fifo->data[fifo->head++];                  //Пишем байт по указанному адресу, head++
     fifo->count--;                                              //Уменьшаем счетчик байт
@@ -38,7 +38,7 @@ s8 fifo_get(fifo_t *fifo, void *data, u8 offset, u8 count)
   return 0;
 }
 
-u8 fifo_count(fifo_t *fifo)
+int fifo_count(fifo_t *fifo)
 {
   return fifo->count;
 }
