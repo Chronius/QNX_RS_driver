@@ -31,7 +31,9 @@ void * interrupt_thread(void * data)
 	}
 
 	uint8_t byte;
-	unsigned char *buf = malloc(FIFO_LENGTH);
+	int nbytes = 0;
+//	unsigned char *buf = malloc(FIFO_LENGTH);
+	unsigned char buf[FIFO_LENGTH];
 
 //	*(uart_set.IrqEnable) = (1 << 2) | (1 << 1) | (1 << 7) | (1 << 6);
 	*(uart_set.IrqEnable) |= (0xFFFFFFFF);
@@ -46,8 +48,10 @@ void * interrupt_thread(void * data)
 			if ((1 << i) & dev_l.dev_open)
 			{
 				//if Rx
-				while (LSR_DR_Get(p_uart[i]->lsr))
+				nbytes = fifo_count(&channel[i].rx_fifo);
+				while (LSR_DR_Get(p_uart[i]->lsr) && (nbytes < FIFO_LENGTH))
 				{
+					nbytes = fifo_count(&channel[i].rx_fifo);
 					byte = (uint8_t) p_uart[i]->rbr_thr_dll;
 //					if (byte != '\0')
 					fifo_put(&channel[i].rx_fifo, &byte, 0, 1);
@@ -63,7 +67,7 @@ void * interrupt_thread(void * data)
 					{
 //						memset(buf, 0, FIFO_LENGTH);
 						p_uart[i]->ier_dlh = IER_RxD_Set; // disable interrupt from txfifo until we write down there
-						check_tx_and_reply(&channel[i], buf);
+//						check_tx_and_reply(&channel[i], buf);
 					}
 				}
 			}

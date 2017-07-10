@@ -47,7 +47,7 @@
 #include <request_queue.h>
 
 #define CPU_CLOCK_MHZ             125000000
-#define UART_CHANNEL_COUNT        20
+#define UART_CHANNEL_COUNT        32
 
 #define MY_CMD_CODE 1
 

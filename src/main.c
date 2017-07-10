@@ -33,16 +33,6 @@ static volatile unsigned done = 0;
 
 static int pathID[UART_CHANNEL_COUNT];
 
-static void rs_exit(int signo)
-{
-    atomic_set(&done, 1);
-    dispatch_unblock(ctp);
-
-    for (int i = 0; i < UART_CHANNEL_COUNT; i++)
-    {
-        resmgr_detach(dpp, pathID[i], _RESMGR_DETACH_ALL);
-    }
-}
 
 int main (int argc, char **argv)
 {
@@ -128,15 +118,6 @@ int main (int argc, char **argv)
      * messages. */
     ctp = dispatch_context_alloc (dpp);
 
-
-    /* register exit handler */
-//    struct sigaction    sa;
-//   sigemptyset(&sa.sa_mask);
-//   sigaddset(&sa.sa_mask, SIGTERM);
-//   sa.sa_handler = rs_exit;
-//   sa.sa_flags = 0;
-//   sigaction(SIGTERM, &sa, NULL);
-
    /* background the process */
 //   procmgr_daemon(0, PROCMGR_DAEMON_NOCLOSE|PROCMGR_DAEMON_NODEVNULL);
 
@@ -206,7 +187,7 @@ int io_close(resmgr_context_t *ctp, void *reserved, RESMGR_OCB_T *ocb)
 	dev_l.dev_open &= ~(1 << ctp->id);
 	p_uart[ctp->id]->ier_dlh = 0;
 
-	return (1);
+	return (close(ctp->id));
 }
 
 

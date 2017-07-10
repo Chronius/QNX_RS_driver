@@ -60,16 +60,57 @@ int pci_init()
 				else
 				{
 					ptr_to_set = ptr;
-					ptr += 0x1000000;
-					for (int i = 0; i < UART_CHANNEL_COUNT; i++)
-					{
-					/* выведены	 p_uart[12] - p_uart[18]
-					 * p_uart[13] - p_uart[17]
-					 */
-						p_uart[i] = ptr;
-						channel[i].ptr_u = ptr;
-						ptr += 0x200;
-					}
+//					ptr += 0x1000000;
+//					for (int i = 0; i < UART_CHANNEL_COUNT; i++)
+//					{
+//					/* выведены	 p_uart[12] - p_uart[18]
+//					 * p_uart[13] - p_uart[17]
+//					 */
+//						p_uart[i] = ptr;
+//						channel[i].ptr_u = ptr;
+//						ptr += 0x200;
+//					}
+					channel[0].ptr_u = p_uart[0] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x2000 + 0x600);
+					channel[1].ptr_u = p_uart[1] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x2000 + 0x400);
+					channel[2].ptr_u = p_uart[2] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x2000 + 0x200);
+					channel[3].ptr_u = p_uart[3] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x2000 + 0x000);
+
+					channel[4].ptr_u = p_uart[4] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1800 + 0x600);
+					channel[5].ptr_u = p_uart[5] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1800 + 0x400);
+					channel[6].ptr_u = p_uart[6] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1800 + 0x200);
+					channel[7].ptr_u = p_uart[7] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1800 + 0x000);
+
+					channel[8].ptr_u = p_uart[8] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1000 + 0x600);
+					channel[9].ptr_u = p_uart[9] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1000 + 0x400);
+					channel[10].ptr_u = p_uart[10] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1000 + 0x200);
+					channel[11].ptr_u = p_uart[11] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x1000 + 0x000);
+
+					channel[12].ptr_u = p_uart[12] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0800 + 0x600);
+					channel[13].ptr_u = p_uart[13] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0800 + 0x400);
+					channel[14].ptr_u = p_uart[14] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0800 + 0x200);
+					channel[15].ptr_u = p_uart[15] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0800 + 0x000);
+
+					channel[16].ptr_u = p_uart[16] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0000 + 0x600);
+					channel[17].ptr_u = p_uart[17] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0000 + 0x400);
+					channel[18].ptr_u = p_uart[18] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0000 + 0x200);
+					channel[19].ptr_u = p_uart[19] = (p_uart_reg *)(ptr_to_set + 0x1000000 + 0x0000 + 0x000);
+					/*-------------------------------------------------------------------------------------*/
+					channel[20].ptr_u = p_uart[20] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x1000 + 0x600);
+					channel[21].ptr_u = p_uart[21] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x1000 + 0x400);
+					channel[22].ptr_u = p_uart[22] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x1000 + 0x200);
+					channel[23].ptr_u = p_uart[23] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x1000 + 0x000);
+
+					channel[24].ptr_u = p_uart[24] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0800 + 0x600);
+					channel[25].ptr_u = p_uart[25] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0800 + 0x400);
+					channel[26].ptr_u = p_uart[26] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0800 + 0x200);
+					channel[27].ptr_u = p_uart[27] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0800 + 0x000);
+
+					channel[28].ptr_u = p_uart[28] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0000 + 0x600);
+					channel[29].ptr_u = p_uart[29] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0000 + 0x400);
+					channel[30].ptr_u = p_uart[30] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0000 + 0x200);
+					channel[31].ptr_u = p_uart[31] = (p_uart_reg *)(ptr_to_set + 0x0000000 + 0x0000 + 0x000);
+
+
 					port_init(ptr_to_set);
 				}
 			}

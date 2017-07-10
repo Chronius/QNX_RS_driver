@@ -325,7 +325,7 @@ void * wait_foo(void *arg)
 //	callback *p_callback = (callback *) arg;
 	int nbytes = 0;
 	int len_request = 0;
-	int res;
+
 	unsigned char *buf = NULL;
 	callback *p_callback = NULL;
 	callback_attr_t *tmp = NULL;

@@ -48,8 +48,8 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb)
 
 	char *buffer;
 	int nbytes;
-	int DataSize = 128;
-	unsigned char Data[128] = {};
+	int DataSize = 127;
+	unsigned char Data[127] = {};
 	int offset = 0;
 	nbytes = msg->i.nbytes;
 	if ((buffer = malloc(nbytes)) == NULL)
@@ -97,7 +97,7 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb)
 			lsr = p_uart[ctp->id]->lsr;
 			if (LSR_THRE_Get(lsr) || LSR_TEMPT_Get(lsr))
 			{
-				pthread_spin_lock(&fifo_spinlock[ctp->id]);
+//				pthread_spin_lock(&fifo_spinlock[ctp->id]);
 				fifo_put(&channel[ctp->id].tx_fifo, buffer, offset, DataSize);
 				fifo_get(&channel[ctp->id].tx_fifo, Data, 0, DataSize);
 
@@ -105,8 +105,8 @@ int io_write(resmgr_context_t *ctp, io_write_t *msg, RESMGR_OCB_T *ocb)
 				{
 					p_uart[ctp->id]->rbr_thr_dll = Data[i];
 				}
-//				p_uart[ctp->id]->ier_dlh = p_uart[ctp->id]->ier_dlh | IER_TxD_Set;
-				pthread_spin_unlock(&fifo_spinlock[ctp->id]);
+				p_uart[ctp->id]->ier_dlh = p_uart[ctp->id]->ier_dlh | IER_TxD_Set;
+//				pthread_spin_unlock(&fifo_spinlock[ctp->id]);
 
 				nbytes -= DataSize;
 				offset += DataSize;
